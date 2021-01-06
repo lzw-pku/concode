@@ -4,12 +4,9 @@ import torch.nn as nn
 from Statistics import Statistics
 from UtilClass import bottle
 from Beam import Beam
-from CopyGenerator import CopyGenerator, RegularGenerator, ProdGenerator
-from RegularDecoder import RegularDecoder
+from ProdGenerator import ProdGenerator
 from ProdDecoder import ProdDecoder
-from RegularEncoder import RegularEncoder 
-from ConcodeEncoder import ConcodeEncoder
-from ConcodeDecoder import ConcodeDecoder
+from RegularEncoder import RegularEncoder
 from decoders import DecoderState
 
 class S2SModel(nn.Module):
@@ -19,29 +16,10 @@ class S2SModel(nn.Module):
     self.opt = opt
     self.vocabs = vocabs
 
-    if self.opt.encoder_type == "regular":
-      self.encoderClass = RegularEncoder
-    elif self.opt.encoder_type == "concode":
-      self.encoderClass = ConcodeEncoder
-    self.encoder = self.encoderClass(vocabs, opt)
+    self.encoder = RegularEncoder(vocabs, opt)
+    self.decoder = ProdDecoder(vocabs, opt)
+    self.generator = ProdGenerator(self.opt.decoder_rnn_size, vocabs, self.opt)
 
-    if self.opt.decoder_type == "prod":
-      self.decoderClass = ProdDecoder
-    elif self.opt.decoder_type == "concode":
-      self.decoderClass = ConcodeDecoder
-    else:
-      self.decoderClass = RegularDecoder
-
-    self.decoder = self.decoderClass(vocabs, opt)
-
-    if self.opt.decoder_type in ["prod", "concode"]:
-      generator = ProdGenerator
-    elif self.opt.copy_attn:
-      generator = CopyGenerator
-    else:
-      generator = RegularGenerator
-
-    self.generator = generator(self.opt.decoder_rnn_size, vocabs, self.opt)
     self.cuda()
 
 

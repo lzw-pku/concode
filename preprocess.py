@@ -195,7 +195,8 @@ class CDDataset(Dataset):
           if parents[i] not in children:
             children[parents[i]] = []
           children[parents[i]].append(i)
-
+          # children: map of   id->[childid1, childid2...]
+          # parent map of id->id
         src = [x.lower() for x in js['nl']]
         self.examples.append(
           {'src': src,

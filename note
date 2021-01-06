@@ -1,0 +1,26 @@
+
+train_data:
+    CDDataset
+        examples:
+            src:['this', 'orders', 'the', 'bsbundle', 's', 'by', 'reverse', '#bopid', 'and', 'by', '#shardid', 'if', 'the', '#bopid', 'is', 'the', 'same', '.', 'this', 'order', 'imposes', 'abias', 'to', 'draw', 'entries', 'with', 'higher', '#bopid', 's', 'from', 'an', 'ordered', 'collection']
+            next_rules
+            prev_rules
+            parent_rules   list of str
+
+    Vocab:
+        seq2seq       {encoder用}
+        nt (需要编号)   {decoder用, generator用}
+        prev_rules    {decoder用}
+        next_rules    {generator用}
+        mask          {generator用}
+
+        make_batch的时候使用  其中stoi['blank']是 PAD    '<s>'是start  '</s>'是end  '<unk>'是UNK
+
+
+
+    batch:
+        seq2seq
+        nt
+        prev_rules
+        parent_rules
+        children (nt have children)  用来传递parent_states
