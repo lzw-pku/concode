@@ -64,7 +64,7 @@ class Trainer:
 
     for epoch in range(self.start_epoch, self.opt.epochs + 1):
       self.model.train()
-
+      
       total_stats = Statistics()
       for idx, batch in enumerate(train_data.batches):
         loss, batch_stats = self.model.forward(batch)
@@ -72,7 +72,7 @@ class Trainer:
         loss.div(batch_size).backward()
         report_stats.update(batch_stats)
         total_stats.update(batch_stats)
-
+        #print(batch_stats.loss, total_stats.loss)
         clip_grad_norm(self.model.parameters(), self.opt.max_grad_norm)
         self.optimizer.step()
         self.optimizer.zero_grad()
@@ -80,7 +80,7 @@ class Trainer:
         if (idx + 1) % self.opt.report_every == -1 % self.opt.report_every:
           report_stats.output(epoch, idx + 1, len(train_data.batches), total_stats.start_time)
           report_stats = Statistics()
-
+      #print(total_stats.loss, total_stats.n_words, total_stats.ppl())
       print('Train perplexity: %g' % total_stats.ppl())
       print('Train accuracy: %g' % total_stats.accuracy())
 

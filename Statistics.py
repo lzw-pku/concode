@@ -17,15 +17,16 @@ class Statistics(object):
         self.loss += stat.loss
         self.n_words += stat.n_words
         self.n_correct += stat.n_correct
+        self.n_src_words += stat.n_src_words
 
     def __str__(self):
       return('Loss: {}, Words:{}, Correct:{} '.format(self.loss, self.n_words, self.n_correct))
 
     def accuracy(self):
-        return 100 * (self.n_correct / self.n_words)
+        return 100 * (self.n_correct.item() / self.n_words.item())
 
     def ppl(self):
-        return math.exp(min(self.loss / self.n_words, 100))
+        return math.exp(min(self.loss / self.n_words.item(), 100))
 
     def elapsed_time(self):
         return time.time() - self.start_time
@@ -38,6 +39,6 @@ class Statistics(object):
                self.accuracy(),
                self.ppl(),
                self.n_src_words / (t + 1e-5),
-               self.n_words / (t + 1e-5),
+               self.n_words.item() / (t + 1e-5),
                time.time() - start))
         sys.stdout.flush()
