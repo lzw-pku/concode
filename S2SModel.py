@@ -75,7 +75,7 @@ class S2SModel(nn.Module):
     scores = self.generator(bottle(output), bottle(copy_attn), src_map if self.opt.encoder_type in ["concode"] else  batch['src_map'], batch)
     loss, total, correct = self.generator.computeLoss(scores, batch)
 
-    return loss, Statistics(loss.data[0], total, correct, self.encoder.n_src_words)
+    return loss, Statistics(loss.item(), total, correct, self.encoder.n_src_words)
 
   # This only works for a batch size of 1
   def predict(self, batch, opt, vis_params):

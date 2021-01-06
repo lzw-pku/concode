@@ -106,7 +106,7 @@ class ProdGenerator(nn.Module):
     # when target is <unk> but can be copied, make sure we get the copy index right
     correct_mask = target_data.eq(self.tgt_unk) * align.data.ne(align_unk)
     correct_copy = (align.data + offset) * correct_mask.long()
-    target_data = (target_data * (1 - correct_mask).long()) + correct_copy
+    target_data = (target_data * (~correct_mask).long()) + correct_copy
 
     pred = scores_data.max(1)[1]
     non_padding = target_data.ne(self.tgt_pad)
@@ -208,7 +208,7 @@ class CopyGenerator(nn.Module):
           # when target is <unk> but can be copied, make sure we get the copy index right
           correct_mask = target_data.eq(self.tgt_unk_idx) * align.data.ne(align_unk)
           correct_copy = (align.data + self.tgt_dict_size) * correct_mask.long()
-          target_data = (target_data * (1 - correct_mask).long()) + correct_copy
+          target_data = (target_data * (~correct_mask).long()) + correct_copy
 
 
         pred = scores_data.max(1)[1]

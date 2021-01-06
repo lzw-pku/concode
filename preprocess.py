@@ -135,7 +135,7 @@ class Vocab():
 class Dataset():
   def compute_batches(self, batch_size, vocabs, max_camel, rank, num_gpus, decoder_type, randomize=True, trunc=-1, no_filter=False):
     timer = time.process_time()
-
+    
     self.batches = []
     curr_batch = []
     total = 0
@@ -149,7 +149,7 @@ class Dataset():
         curr_batch = []
       if i == trunc:
         break
-
+      if i % 5000 == 0: print(i)
     if randomize:
       random.shuffle(self.batches)
     print('Computed batched in :' + str(time.process_time() - timer) + ' secs')

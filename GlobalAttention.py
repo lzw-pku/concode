@@ -160,7 +160,7 @@ class GlobalAttention(nn.Module):
             elif context_lengths_or_mask.dim() == 2: # Its lengths and not mask
               mask = context_lengths_or_mask.data
             mask = mask.unsqueeze(1)  # Make it broadcastable.
-            align.data.masked_fill_(1 - mask, -float('inf'))
+            align.data.masked_fill_(~mask, -float('inf'))
 
 
         # Softmax to normalize attention weights

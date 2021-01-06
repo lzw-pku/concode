@@ -26,6 +26,7 @@ class RegularEncoder(nn.Module):
     src_embeddings = self.encoder_embedding(src)
 
     lengths = src.ne(self.vocabs['seq2seq'].stoi['<blank>']).float().sum(1)
-    self.n_src_words = lengths.sum().data[0]
+    
+    self.n_src_words = lengths.sum().item()
     context, enc_hidden = self.encoder_rnn(src_embeddings, lengths)
     return context, lengths, enc_hidden
