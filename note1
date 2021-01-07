@@ -1,0 +1,31 @@
+code字段是未替换过param name的，而renamed才是真正用的code
+renamed做处理，把变量和函数在context中出现的那些的名字前加上concodeclass_或者concodefunc_
+build 调用了 Tree.py进行parse获取action rule（java语法）
+rule是用字符串形式的production组成的list
+
+
+preproces中：
+    构建CDDataset的时候：
+        rule中的concodeclass_ concodefunc_被去除前缀
+        用rule.split('-->')获取NT。
+        创建了prevRule，对于每条rule（除了最后一条）判断是否是terminalRule，是的话返回Identifier_OR_Literal，否则返回自身
+
+        最终example中的seq2seq_copy 是一个code_len * seq_len的0-1矩阵，表示是否copy（完全相等，且不是";" 就copy）
+        example跟据src长度排序
+
+        rhs是 nt -> list of rule的映射
+
+    先构建train_dataset和valid_dataset
+    构建vocab，对于nl, nt, seq2seq, name都有各自的vocab
+    然后转成num（对example加了大量num结尾的字段，对每一个field都用专用vocab转成num）
+
+    vocab['rhs']是train和valid的rule的合并
+    vocab['mask']是 nt_num * rule_num 的矩阵，0表示有这个rule， -100000表示没有
+
+train中：
+    S2SModel 的 input是batch(是一个map，每个字段对应一个batch的数据的字段所有转为num的tensor)
+    而根据Encoder和Decoder的不同，所使用的字段也不同，比如RegularEncoder使用的就是seq2seq字段
+
+
+    Encoder可以不用管，就用ConcodeEncoder
+    Decoder的话，要改的就是rule_embedding，实际上就是改原始数据中的prev_rule（猜测要更改train_shuffled_with_pathxxx）

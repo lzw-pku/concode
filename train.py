@@ -92,11 +92,11 @@ def main():
 
   opt = parser.parse_args()
 
-  torch.backends.cudnn.deterministic = True
-  torch.cuda.set_device(0)
+  #torch.backends.cudnn.deterministic = True
+  #torch.cuda.set_device(0)
   torch.manual_seed(opt.seed)
   random.seed(opt.seed)
-  torch.cuda.manual_seed(opt.seed)
+  #torch.cuda.manual_seed(opt.seed)
   numpy.random.seed(opt.seed)
 
 
@@ -136,3 +136,7 @@ def main():
 
 if __name__ == "__main__":
   main()
+'''
+python3 train.py -dropout 0.5  -data data/atis/atis -save_model data/atis/s2p -epochs 30 -learning_rate 0.001 -seed 1123 -enc_layers 2 -dec_layers 2  -batch_size 20 -src_word_vec_size 256 -tgt_word_vec_size 128 -rnn_size 256 -encoder_type regular -decoder_type prod -brnn -copy_attn
+
+'''

@@ -19,113 +19,32 @@ def processNlToks(nlToks):
 
 trainNls = []
 
-def processFiles(fname, prefix, dset, trunc):
+def processFiles(fname, prefix, dset):
   dataset = []
 
-  codeVocab = collections.Counter()
-  nlVocab = collections.Counter()
-
   i = 0
-  didnt_parse = 0
+  import pickle
+  with open(fname, 'rb') as file:
+    data = pickle.load(file)
+  for d in data:
+    code = d['query']
+    nl = d['question']
+    rule_seq = d['action_rules']
 
-  for line in open(fname, 'r'):
-    i += 1
-    if i % 10000 == 0:
-      print(i)
+    seq2seq = nl.split()
 
-    js = json.loads(line)
-    code = js['renamed']
-
-    codeVocab.update(code)
-
-    nlToks = processNlToks(js['nlToks'])
-    nlVocab.update(nlToks)
-
-    codeToks = [cTok.encode('ascii', 'replace').decode().replace("\x0C", "").strip() for cTok in code]
-    if len(nlToks) == 0 or len(codeToks) == 0:
-      continue
-
-    # put placeholder variables and methods
-    if len(js["memberVariables"]) == 0:
-      js["memberVariables"]["placeHolder"] = "PlaceHolder"
-    if len(js["memberFunctions"]) == 0:
-      js["memberFunctions"]["placeHolder"] = [['placeholderType']]
-
-
-    # pull out methods
-    methodNames, methodReturns, methodParamNames, methodParamTypes = [], [], [], []
-    for methodName in js["memberFunctions"]:
-      for methodInstance in js["memberFunctions"][methodName]:
-        # Always have a parameter
-        methodNames.append(methodName)
-        methodReturns.append("None" if methodInstance[0] is None else methodInstance[0]) # The first element is the return type
-        if len(methodInstance) == 1:
-          methodInstance += ['NoParams noParams']
-        methodParamNames.append([methodInstance[p].split()[-1] for p in range(1, len(methodInstance))])
-        methodParamTypes.append([' '.join(methodInstance[p].split()[:-1]).replace('final ', '') for p in range(1, len(methodInstance))])
-
-    # Find and annotate class variables
-    memberVarNames = [key.split('=')[0].encode('ascii', 'replace').decode() for key, value in js["memberVariables"].items()]
-    memberVarTypes = [value.encode('ascii', 'replace').decode() for key, value in js["memberVariables"].items()]
-
-    for t in range(0, len(codeToks)):
-      if codeToks[t] in memberVarNames and (codeToks[t - 1] != '.' or (codeToks[t - 1] == '.' and codeToks[t - 2] == "this")):
-        codeToks[t] = 'concodeclass_' + codeToks[t]
-      elif codeToks[t] == '(' and codeToks[t - 1] in methodNames and (codeToks[t - 2] != '.' or (codeToks[t - 2] == '.' and codeToks[t - 3] == "this")):
-        codeToks[t - 1] = 'concodefunc_' + codeToks[t - 1]
-
-    try:
-      rule_seq = getProductions('class TestClass { ' + ' '.join(codeToks) + ' }')
-    except:
-      import pdb
-      pdb.set_trace()
-
-    # If it doesnt parse, we should skip this
-    if rule_seq is None:
-      didnt_parse += 1
-      continue
-
-    if dset == "train":
-      trainNls.append(' '.join(nlToks))
-    elif " ".join(nlToks) in trainNls:
-      continue
-
-    try:
-      seq2seq = ( ' '.join(nlToks).lower() + ' concode_field_sep ' + \
-    ' concode_elem_sep '.join([vtyp + ' ' + vnam for (vnam, vtyp) in zip(memberVarNames, memberVarTypes)]) + ' concode_field_sep ' + \
-      ' concode_elem_sep '.join([mret + ' ' + mname + ' concode_func_sep ' + ' concode_func_sep '.join(mpt + ' ' + mpn for (mpt, mpn) in zip(mpts, mpns) )  for (mret, mname, mpts, mpns) in zip(methodReturns, methodNames, methodParamTypes, methodParamNames)] ) ).split()
-      seq2seq_nop = ( ' '.join(nlToks).lower() + ' concode_field_sep ' + \
-    ' concode_elem_sep '.join([vtyp + ' ' + vnam for (vnam, vtyp) in zip(memberVarNames, memberVarTypes)]) + ' concode_field_sep ' + \
-    ' concode_elem_sep '.join([mret + ' ' + mname for (mret, mname) in zip(methodReturns, methodNames)])).split()
-    except:
-      import pdb
-      pdb.set_trace()
 
     dataset.append(
-      {'nl': nlToks,
-       'code': codeToks,
-       'idx': js['idx'], #str(i),
-       'varNames': memberVarNames,
-       'varTypes': memberVarTypes,
+      {'nl': nl,
+       'code': code,
        'rules': rule_seq,
-       'methodNames': methodNames,
-       'methodReturns': methodReturns,
-       'methodParamNames': methodParamNames,
-       'methodParamTypes': methodParamTypes,
        'seq2seq': seq2seq,
-       'seq2seq_nop': seq2seq_nop
-       })
-
-    if len(dataset) == trunc:
-      break
+       }
+    )
 
   f = open(prefix + '.dataset', 'w')
   f.write(json.dumps(dataset, indent=4))
   f.close()
-
-  print ('Total code vocab: ' + str(len(codeVocab)))
-  print ('Total nl vocab: ' + str(len(nlVocab)))
-  print ('Total didnt parse: ' + str(didnt_parse))
 
 if __name__ == '__main__':
 

@@ -20,9 +20,9 @@ class ProdDecoder(nn.Module):
       padding_idx=vocabs['nt'].stoi['<blank>'])
 
     self.rule_embedding = nn.Embedding(
-      len(vocabs['prev_rules']),
+      len(vocabs['rule']),
       opt.tgt_word_vec_size,
-      padding_idx=vocabs['prev_rules'].stoi['<blank>'])
+      padding_idx=vocabs['rule'].stoi['<blank>'])
 
     self.attn = GlobalAttention(
         opt.rnn_size,

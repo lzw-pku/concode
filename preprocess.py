@@ -169,16 +169,17 @@ class CDDataset(Dataset):
   def __init__(self, dataFile, opt, test=False, trunc=-1):
     self.examples = []
     self.rhs = {}
-    dataset = json.loads(open(dataFile, 'r').read())
-
+    import pickle
+    with open(dataFile, 'rb') as file:
+      dataset = pickle.load(file)
+    for d in dataset:
+      d['code'] = d['query'].split()
+      d['seq2seq'] = d['question'].split()
     max_code = max(len(js['code']) for js in dataset)
+
     print('Maximum code toks: ' + str(max_code))
     for js in dataset:
       if test or (len(js['seq2seq']) <= opt.src_seq_length and len(js['code']) <= opt.tgt_seq_length):
-
-        # Important: This should be done after copy!
-        for i in range(0, len(js['rules'])):
-          js['rules'][i] = js['rules'][i].replace('concodeclass_', '').replace('concodefunc_', '')
 
 
         nonTerminals = [rule.split('-->')[0] for rule in js['rules']]
