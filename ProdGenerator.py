@@ -17,7 +17,7 @@ class ProdGenerator(nn.Module):
   def __init__(self, rnn_size, vocabs, opt):
     super(ProdGenerator, self).__init__()
     self.opt = opt
-    self.mask = Variable(vocabs['mask'].float().cuda(), requires_grad=False)
+    self.mask = Variable(vocabs['mask'].float(), requires_grad=False)
     self.linear = nn.Linear(rnn_size , len(vocabs['rule']))  # only non unk rules
     self.linear_copy = nn.Linear(rnn_size, 1)
     self.tgt_pad = vocabs['rule'].stoi['<blank>']

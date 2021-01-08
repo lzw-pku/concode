@@ -4,6 +4,107 @@ import torch.optim as optim
 from torch.nn.utils import clip_grad_norm
 import torch.nn as nn
 import time
+import random
+import numpy as np
+
+def make_batch_elem_into_tensor(batch, entry, pad):
+  seq_len = max(len(elem[entry]) for elem in batch)
+  torch_batch = np.full((len(batch), seq_len), pad) #torch.LongTensor(seq_len, len(batch)).fill_(pad)
+  for i in range(0, len(batch)):
+    for j in range(0, len(batch[i][entry])):
+      torch_batch[i][j] = batch[i][entry][j]
+  return torch.LongTensor(torch_batch)
+def make_batch_into_tensor(batch, vocabs, max_camel):
+
+    d['seq2seq'] = d['question'].split()
+    d['next_rules'] = d['action_rule']
+    d['prev_rules'] = [-1] + d['action_rule'][:-1]
+    d['parent_rules'] = getParentRule(d['logical_form_tree'], -1)  # parentRules 是 parents获取的 其中第0个的parent是<s> 是vocab加的！！！！！
+    d['seq2seq_vocab'] = Vocab(d['seq2seq'], 0, 100000000, start=False, stop=False)
+    d['nt'] = [grammar.get_production_rule_by_id(rule).lhs for rule in d['action_rule']]
+
+
+    d['seq2seq_nums'] = nlvocab.to_num(d['seq2seq'])
+    d['seq2seq_in_src_nums'] = d['seq2seq_vocab'].to_num(nlvocab.addStartOrEnd(d['seq2seq']))
+    # code_in_src_nums ??????
+    d['next_rules_nums'] = d['next_rules']
+    d['prev_rules_nums'] = d['prev_rules']
+    d['parent_rules_nums'] = d['parent_rules']
+    d['nt_nums'] = ntvocab.to_num(d['nt'])
+
+    torch_batch = {}
+    # -------- for seq2seq
+    torch_batch['seq2seq'] = make_batch_elem_into_tensor(batch, 'seq2seq_nums', vocabs['seq2seq'].stoi['<blank>'])
+    #torch_batch['code'] = make_batch_elem_into_tensor(batch, 'code_nums', vocabs['code'].stoi['<blank>'])
+    local_vocab_blank = batch[0]['seq2seq_vocab'].stoi['<blank>']
+    torch_batch['seq2seq_in_src'] = make_batch_elem_into_tensor(batch, 'seq2seq_in_src_nums', local_vocab_blank)
+    # src_map maps positions in the source to source vocab entries, so that we can accumulate copy scores for each vocab entry based on all
+    # positions in which it appears
+    torch_batch['src_map'] = expandBatchOneHot(torch_batch['seq2seq_in_src'],
+                                               local_vocab_blank)  # src token mapped to vocab
+
+
+    # ---------------------------------------------
+    #torch_batch['code_in_src_nums'] = make_batch_elem_into_tensor(batch, 'code_in_src_nums', local_vocab_blank)
+    #torch_batch['next_rules_in_src_nums'] = make_batch_elem_into_tensor(batch, 'next_rules_in_src_nums',
+    #                                                                    local_vocab_blank)
+    torch_batch['seq2seq_vocab'] = [b['seq2seq_vocab'] for b in batch]  # Store this for replace unk
+    #torch_batch['raw_code'] = [b['code'] for b in batch]  # Store this for replace unk
+    #torch_batch['raw_seq2seq'] = [b['seq2seq'] for b in batch]  # Store this for replace unk
+    # -------------------------Prod Decoder
+    torch_batch['nt'] = make_batch_elem_into_tensor(batch, 'nt_nums', vocabs['nt'].stoi['<blank>'])
+    torch_batch['prev_rules'] = make_batch_elem_into_tensor(batch, 'prev_rules_nums',
+                                                            vocabs['prev_rules'].stoi['<blank>'])
+    torch_batch['parent_rules'] = make_batch_elem_into_tensor(batch, 'parent_rules_nums',
+                                                              vocabs['prev_rules'].stoi['<blank>'])
+
+    torch_batch['next_rules'] = make_batch_elem_into_tensor(batch, 'next_rules_nums',
+                                                            vocabs['next_rules'].stoi['<blank>'])
+    torch_batch['seq2seq_copy'] = CDDataset.stack_with_padding([torch.LongTensor(b['seq2seq_copy']) for b in batch], 0,
+                                                               start_symbol=True, stop_symbol=True)
+    torch_batch['children'] = [b['children'] for b in batch]  # Store this for replace unk
+    # ------------------------------
+
+    # ---- Our Encoder --------------
+    torch_batch['src'] = make_batch_elem_into_tensor(batch, 'src_nums', vocabs['names_combined'].stoi['<blank>'])
+    torch_batch['varTypes'] = make_batch_elem_into_tensor(batch, 'varTypes_nums', vocabs['types'].stoi['<blank>'])
+    torch_batch['methodReturns'] = make_batch_elem_into_tensor(batch, 'methodReturns_nums',
+                                                               vocabs['types'].stoi['<blank>'])
+    torch_batch['varNames'] = make_batch_char_elem_into_tensor(batch, 'varNames_nums',
+                                                               pad=vocabs['names_combined'].stoi['<blank>'],
+                                                               maxl=max_camel, minl=1)
+    torch_batch['methodNames'] = make_batch_char_elem_into_tensor(batch, 'methodNames_nums',
+                                                                  pad=vocabs['names_combined'].stoi['<blank>'],
+                                                                  maxl=max_camel, minl=1)
+    torch_batch['raw_src'] = [b['src'] for b in batch]  # Store this for replace unk
+    torch_batch['raw_varNames'] = [b['varNames'] for b in batch]  # Store this for replace unk
+    torch_batch['raw_methodNames'] = [b['methodNames'] for b in batch]  # Store this for replace unk
+    # -------------------------------------
+
+    return torch_batch
+def compute_batches(examples, batch_size, vocabs, max_camel, rank, num_gpus, decoder_type, randomize=True, trunc=-1,
+                    no_filter=False):
+    timer = time.process_time()
+
+    batches = []
+    curr_batch = []
+    total = 0
+    for i in range(rank, len(examples), num_gpus):
+        #if not no_filter and len(examples[i]['next_rules']) > 200:
+        #    continue
+        total += 1
+        curr_batch.append(examples[i])
+        if len(curr_batch) == batch_size or i == (len(examples) - 1) or i == trunc:
+            batches.append(make_batch_into_tensor(curr_batch, vocabs, max_camel))
+            curr_batch = []
+        if i == trunc:
+            break
+        if i % 5000 == 0: print(i)
+    if randomize:
+        random.shuffle(batches)
+    print('Computed batched in :' + str(time.process_time() - timer) + ' secs')
+    return total, batches
+
 
 class Trainer:
   def __init__(self, model):

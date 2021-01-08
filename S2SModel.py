@@ -20,7 +20,7 @@ class S2SModel(nn.Module):
     self.decoder = ProdDecoder(vocabs, opt)
     self.generator = ProdGenerator(self.opt.decoder_rnn_size, vocabs, self.opt)
 
-    self.cuda()
+    #self.cuda()
 
 
   def forward(self, batch):
